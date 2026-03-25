@@ -321,26 +321,61 @@ fn open_tui_for_project(workspace: &str) {
 }
 
 fn send_notification(title: &str, body: &str) {
-    let _ = mac_notification_sys::Notification::default()
-        .title(title)
-        .message(body)
-        .send();
+    #[cfg(target_os = "macos")]
+    {
+        let _ = mac_notification_sys::Notification::default()
+            .title(title)
+            .message(body)
+            .send();
+    }
+    #[cfg(target_os = "linux")]
+    {
+        let _ = notify_rust::Notification::new()
+            .summary(title)
+            .body(body)
+            .show();
+    }
+    #[cfg(target_os = "windows")]
+    {
+        // Windows toast notifications require a separate crate
+        let _ = (title, body);
+    }
 }
 
 fn play_sound(name: &str) {
-    // Play macOS system sound (e.g. "Ping", "Glass", "Basso", "Hero")
-    let _ = std::process::Command::new("afplay")
-        .args([&format!("/System/Library/Sounds/{}.aiff", name)])
-        .spawn();
+    #[cfg(target_os = "macos")]
+    {
+        let _ = std::process::Command::new("afplay")
+            .args([&format!("/System/Library/Sounds/{}.aiff", name)])
+            .spawn();
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = name;
+    }
 }
 
 fn is_autostart_installed() -> bool {
-    dirs::home_dir()
-        .map(|h| h.join("Library/LaunchAgents/com.shazam.tray.plist").exists())
-        .unwrap_or(false)
+    #[cfg(target_os = "macos")]
+    {
+        dirs::home_dir()
+            .map(|h| h.join("Library/LaunchAgents/com.shazam.tray.plist").exists())
+            .unwrap_or(false)
+    }
+    #[cfg(not(target_os = "macos"))]
+    { false }
 }
 
 fn toggle_autostart(menu_item: &MenuItem) {
+    #[cfg(not(target_os = "macos"))]
+    { let _ = menu_item; return; }
+
+    #[cfg(target_os = "macos")]
+    toggle_autostart_macos(menu_item);
+}
+
+#[cfg(target_os = "macos")]
+fn toggle_autostart_macos(menu_item: &MenuItem) {
     let home = dirs::home_dir().expect("No home dir");
     let plist_path = home.join("Library/LaunchAgents/com.shazam.tray.plist");
 

@@ -2,19 +2,23 @@
 name = "shazam-tray"
 version = "0.1.0"
 edition = "2021"
-description = "Shazam menu bar app — persistent backend service for macOS"
+description = "Shazam menu bar app — persistent backend service"
 
 [dependencies]
 tray-icon = "0.21"
 tao = "0.35"
-mac-notification-sys = "0.6"
-tokio-tungstenite = "0.28"
-tokio = { version = "1", features = ["full"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-futures-util = "0.3"
 dirs = "6"
 png = "0.17"
+
+# macOS-only: native notifications
+[target.'cfg(target_os = "macos")'.dependencies]
+mac-notification-sys = "0.6"
+
+# Linux: notification via notify-rust
+[target.'cfg(target_os = "linux")'.dependencies]
+notify-rust = "4"
 
 [profile.release]
 opt-level = "z"
