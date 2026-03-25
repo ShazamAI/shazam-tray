@@ -71,8 +71,27 @@ fn start_daemon() -> Result<(), String> {
 
     eprintln!("Starting daemon via {}...", shazam_bin.display());
 
+    // Build full PATH — .app bundles have minimal PATH, need elixir/erlang
+    let home = dirs::home_dir().unwrap_or_default();
+    let extra_paths = [
+        home.join("bin"),
+        home.join(".cargo/bin"),
+        home.join(".local/bin"),
+        home.join(".asdf/shims"),
+        home.join(".mise/shims"),
+        PathBuf::from("/usr/local/bin"),
+        PathBuf::from("/opt/homebrew/bin"),
+    ];
+    let current_path = std::env::var("PATH").unwrap_or_default();
+    let full_path = extra_paths.iter()
+        .map(|p| p.to_string_lossy().to_string())
+        .chain(std::iter::once(current_path))
+        .collect::<Vec<_>>()
+        .join(":");
+
     let output = Command::new(&shazam_bin)
         .args(["daemon", "start"])
+        .env("PATH", &full_path)
         .output()
         .map_err(|e| format!("Failed to run shazam daemon start: {}", e))?;
 
