@@ -40,7 +40,7 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libgtk-3-dev libayatana-appindicator3-dev
+          sudo apt-get install -y libgtk-3-dev libayatana-appindicator3-dev libxdo-dev
 
       - name: Build
         run: cargo build --release --target ${{ matrix.target }}
@@ -81,8 +81,11 @@ jobs:
           </plist>
           PLIST
 
-          # Create DMG
-          hdiutil create -volname "Shazam Tray" -srcfolder "Shazam Tray.app" -ov -format UDZO shazam-tray-macos-arm64.dmg
+          # Create DMG with Applications symlink (drag-to-install)
+          mkdir -p dmg-content
+          mv "Shazam Tray.app" dmg-content/
+          ln -s /Applications dmg-content/Applications
+          hdiutil create -volname "Shazam Tray" -srcfolder dmg-content -ov -format UDZO shazam-tray-macos-arm64.dmg
 
       - name: Create macOS .app bundle (x86_64)
         if: matrix.target == 'x86_64-apple-darwin'
@@ -119,7 +122,10 @@ jobs:
           </plist>
           PLIST
 
-          hdiutil create -volname "Shazam Tray" -srcfolder "Shazam Tray.app" -ov -format UDZO shazam-tray-macos-x86_64.dmg
+          mkdir -p dmg-content
+          mv "Shazam Tray.app" dmg-content/
+          ln -s /Applications dmg-content/Applications
+          hdiutil create -volname "Shazam Tray" -srcfolder dmg-content -ov -format UDZO shazam-tray-macos-x86_64.dmg
 
       - name: Package Linux binary
         if: matrix.os == 'ubuntu-latest'
