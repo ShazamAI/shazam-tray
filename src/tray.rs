@@ -1,5 +1,6 @@
 use crate::AppState;
 use crate::daemon;
+use crate::ws_client;
 use std::sync::{Arc, Mutex};
 
 use tao::event_loop::{ControlFlow, EventLoopBuilder};
@@ -137,7 +138,21 @@ pub fn run_tray(state: Arc<Mutex<AppState>>) {
             if event.id == project_id {
                 if let Ok(s) = state.lock() {
                     if let Some(p) = s.projects.first() {
-                        open_tui_for_project(&p.workspace);
+                        let port = s.daemon_port;
+                        let name = p.name.clone();
+                        let workspace = p.workspace.clone();
+                        let is_running = p.status == "running";
+                        drop(s); // Release lock before blocking call
+
+                        if is_running {
+                            // Running → open TUI
+                            open_tui_for_project(&workspace);
+                        } else {
+                            // Stopped → start the project
+                            std::thread::spawn(move || {
+                                ws_client::start_project(port, &name);
+                            });
+                        }
                     }
                 }
             }
@@ -203,13 +218,16 @@ pub fn run_tray(state: Arc<Mutex<AppState>>) {
 
         // Project item
         if s.projects.is_empty() {
-            project_item.set_text("No active projects");
+            project_item.set_text("No projects registered");
             project_item.set_enabled(false);
         } else {
             let lines: Vec<String> = s.projects.iter().map(|p| {
-                format!("● {}  — {}t/{}  P:{} R:{} D:{} ${:.2}",
-                    p.name, p.agents_active, p.agents_total,
-                    p.tasks_pending, p.tasks_running, p.tasks_done, p.total_cost)
+                let icon = if p.status == "running" { "●" } else { "○" };
+                if p.status == "running" {
+                    format!("{} {} (running) — {}t/{}", icon, p.name, p.agents_active, p.agents_total)
+                } else {
+                    format!("{} {} (stopped) — click to start", icon, p.name)
+                }
             }).collect();
             project_item.set_text(&lines.join("  |  "));
             project_item.set_enabled(true);

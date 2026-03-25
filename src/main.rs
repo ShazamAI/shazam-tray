@@ -18,6 +18,7 @@ pub struct AppState {
 pub struct ProjectStatus {
     pub name: String,
     pub workspace: String,
+    pub status: String, // "running" or "stopped"
     pub agents_active: u32,
     pub agents_total: u32,
     pub tasks_pending: u32,
@@ -40,6 +41,13 @@ impl Default for AppState {
 }
 
 fn main() {
+    // Initialize Sentry for error tracking
+    let _sentry_guard = sentry::init(("https://1b3fbab3f097b65e9fb8b8c978383c2e@o4505191293779968.ingest.us.sentry.io/4511106667970560", sentry::ClientOptions {
+        release: Some("shazam-tray@0.1.1".into()),
+        environment: Some("production".into()),
+        ..Default::default()
+    }));
+
     let state = Arc::new(Mutex::new(AppState::default()));
 
     // Check if daemon is already running (don't auto-start)
